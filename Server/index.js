@@ -22,8 +22,7 @@ pemKey = fs.readFileSync(privateKeyPath, 'utf8');
 
 var privateKey = new NodeRSA(pemKey);
 
-io.on('connection', function(socket){
-
+io.on('connection', function(socket) {
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
 	socket.on('check username', function(data){
@@ -50,7 +49,7 @@ io.on('connection', function(socket){
 		socket.emit('can login', rep);
 	})
 
-	socket.on('player connect', function(){
+	socket.on('player connect', function() {
 		console.log(currentPlayer.name+ ' recv: player connect');
 		for(var i=0; i<clients.length;i++){
 			var playerConnected = {
@@ -65,7 +64,7 @@ io.on('connection', function(socket){
 		}
 	})
 
-	socket.on('play', function(data){
+	socket.on('play', function(data) {
 		console.log(currentPlayer.name+' recv: play: ' + JSON.stringify(data));
 		//if this is the first person to join the game init the enemies
 		if(clients.length == 0){
@@ -93,6 +92,7 @@ io.on('connection', function(socket){
 		var enemiesResponse = {
 			enemies: enemies
 		};
+
 		//we always will send the enemies when the player joins
 		console.log(currentPlayer.name + ' emit: enemies: ' + JSON.stringify(enemiesResponse));
 		socket.emit('enemies', enemiesResponse);
@@ -131,19 +131,19 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('other player connected', currentPlayer);
 	});
 
-	socket.on('player move safe', function(data){
+	socket.on('player move safe', function(data) {
 		//console.log('recv: move: ' + JSON.stringify(data));
 		currentPlayer.position = data.position;
 		//{name:, positionx, y, z}
 		socket.broadcast.emit('player move', currentPlayer);
 	});
 
-	socket.on('player move', function(data){
+	socket.on('player move', function(data) {
 		//console.log('recv: move: ' + JSON.stringify(data));
 
 		var json = JSON.parse(data.json);
 		//Signature verification BEGIN
-		if(clientKeys[json.name] === "undefined" || clientKeys[json.name] == null){
+		if (clientKeys[json.name] === "undefined" || clientKeys[json.name] == null) {
 			console.log('User does not exist');
 			return;
 		}
@@ -165,24 +165,24 @@ io.on('connection', function(socket){
 
 		clientChanged = null;
 		for (var i = 0; i < clients.length; i++) {
-			if(json.name == clients[i].name){
+			if(json.name == clients[i].name) {
 				clients[i].position = json.position;
 				clientChanged = clients[i];
 				break;
 			}
 		}
-		if(clientChanged!=null){
+		if (clientChanged!=null) {
 			socket.broadcast.emit('player move', clientChanged);
 		}
 	});
 
-	socket.on('player turn', function(data){
+	socket.on('player turn', function(data) {
 		//console.log('recv: move: ' + JSON.stringify(data));
 		currentPlayer.rotation = data.rotation;
 		socket.broadcast.emit('player turn', currentPlayer);
 	});
 
-	socket.on('player shoot', function(){
+	socket.on('player shoot', function() {
 		//console.log(currentPlayer.name + ' recv: shoot');
 		var data = {
 			name: currentPlayer.name
@@ -192,39 +192,41 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('player shoot', data);
 	});
 
-	socket.on('health', function(data){
-		//console.log(currentPlayer.name+ ' recv: health: ' + JSON.stringify(data));
+	socket.on('health', function(data) {
+		console.log(currentPlayer.name+ ' recv: health: ' + data.json);
+		var json = JSON.parse(data.json);
 		//only change the health once, we can do this by checking the originating player
-		if(data.from === currentPlayer.name){
+		if (json.from === currentPlayer.name) {
 			var indexDamaged = 0;
-			if(!data.isEnemy){
-				clients = clients.map(function(client, index){
-					if(client.name === data.name){
+			if (!json.isEnemy) {
+				clients = clients.map(function(client, index) {
+					if (client.name === json.name) {
 						indexDamaged = index;
-						client.health -= data.healthChange;
+						client.health -= json.healthChange;
 					}
 					return client
 				});
 			}
-			else{
-				enemies = enemies.map(function(enemy, index){
-					if(enemy.name === data.name){
+			else {
+				enemies = enemies.map(function(enemy, index) {
+					if (enemy.name === json.name) {
 						indexDamaged = index;
-						enemy.health -= data.healthChange;
+						enemy.health -= json.healthChange;
 					}
 					return enemy;
 				});
 			}
 
 			var response = {
-				name: (!data.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
-				health: (!data.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
+				name: (!json.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
+				health: (!json.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
 			};
 			//console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
 			socket.emit('health', response);
 			socket.broadcast.emit('health', response);
 		}
 	});
+
 	socket.on('restoreHealth', function(){
 		//console.log(' Restoring health ');
 		currentPlayer.health = 100;

@@ -26,17 +26,17 @@ io.on('connection', function(socket){
 
 	var currentPlayer = {};
 	currentPlayer.name = 'unknown';
-	socket.on('check username', function(data){
+	socket.on('check username', function(data) {
 		console.log('recv: check username:' + data.username);
-		if(clients.length==0){
+		if (clients.length == 0) {
 			rep = {
 				reply : "yes"
 			};
 			socket.emit('can login', rep);
 			return;
 		}
-		for(i = 0; i<clients.length; i++){
-			if(clients[i].name == data.username){
+		for (i = 0; i<clients.length; i++) {
+			if (clients[i].name == data.username) {
 				rep = {
 					reply : "no"
 				};
@@ -50,9 +50,9 @@ io.on('connection', function(socket){
 		socket.emit('can login', rep);
 	})
 
-	socket.on('player connect', function(){
-		console.log(currentPlayer.name+ ' recv: player connect');
-		for(var i=0; i<clients.length;i++){
+	socket.on('player connect', function() {
+		console.log(currentPlayer.name + ' recv: player connect');
+		for (var i=0; i<clients.length; i++) {
 			var playerConnected = {
 				name:clients[i].name,
 				position:clients[i].position,
@@ -65,13 +65,13 @@ io.on('connection', function(socket){
 		}
 	})
 
-	socket.on('play', function(data){
+	socket.on('play', function(data) {
 		console.log(currentPlayer.name+' recv: play: ' + JSON.stringify(data));
 		//if this is the first person to join the game init the enemies
-		if(clients.length == 0){
+		if (clients.length == 0) {
 			numberOfEnemies = data.enemySpawnPoints.length;
 			enemies = [];
-			data.enemySpawnPoints.forEach(function(enemySpawnPoint){
+			data.enemySpawnPoints.forEach(function(enemySpawnPoint) {
 				var enemy = {
 					name: guid(),
 					position: enemySpawnPoint.position,
@@ -93,6 +93,7 @@ io.on('connection', function(socket){
 		var enemiesResponse = {
 			enemies: enemies
 		};
+
 		//we always will send the enemies when the player joins
 		console.log(currentPlayer.name + ' emit: enemies: ' + JSON.stringify(enemiesResponse));
 		socket.emit('enemies', enemiesResponse);
@@ -104,10 +105,8 @@ io.on('connection', function(socket){
 			health: 100
 		};
 
-
 		var buf = Buffer.from(data.publicKey, 'base64');
 		var publicKey = crypto.privateDecrypt({"key":pemKey, "padding":crypto.constants.RSA_NO_PADDING}, buf);
-
 
 		var playerPublicKey = publicKey.toString().substring(publicKey.toString().indexOf('-----BEGIN'));
 		clientKeys[currentPlayer.name] = playerPublicKey;
@@ -157,7 +156,7 @@ io.on('connection', function(socket){
 		var jsonData = data.json
 		var md5sum = crypto.createHash('md5').update(jsonData+nonce).digest("hex").toUpperCase();
 		
-		if(md5sum != decryptedSignature){
+		if (md5sum != decryptedSignature) {
 			console.log('Dropped message');
 			return;
 		}
@@ -165,13 +164,13 @@ io.on('connection', function(socket){
 
 		clientChanged = null;
 		for (var i = 0; i < clients.length; i++) {
-			if(json.name == clients[i].name){
+			if (json.name == clients[i].name) {
 				clients[i].position = json.position;
 				clientChanged = clients[i];
 				break;
 			}
 		}
-		if(clientChanged!=null){
+		if (clientChanged!=null) {
 			socket.broadcast.emit('player move', clientChanged);
 		}
 	});
@@ -192,40 +191,64 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('player shoot', data);
 	});
 
-	socket.on('health', function(data){
+	socket.on('health', function(data) {
 		//console.log(currentPlayer.name+ ' recv: health: ' + JSON.stringify(data));
+
+		var json = JSON.parse(data.json);
+		//Signature verification BEGIN
+		if (clientKeys[json.name] === "undefined" || clientKeys[json.name] == null) {
+			console.log('User does not exist');
+			return;
+		}
+		clientNonces[json.name] = (clientNonces[json.name] + 1) % 10000;
+		nonce = clientNonces[json.name].toString();
+
+		var buf = Buffer.from(data.signature, 'base64');
+		
+		var playerPublicKey = clientKeys[json.name];
+		var decryptedSignature = crypto.publicDecrypt({"key":playerPublicKey, "padding":crypto.constants.RSA_NO_PADDING}, buf).toString('utf8').trim().replace(/\0/g, '');
+		var jsonData = data.json
+		var md5sum = crypto.createHash('md5').update(jsonData+nonce).digest("hex").toUpperCase();
+		
+		if (md5sum != decryptedSignature) {
+			console.log('Dropped message');
+			return;
+		}
+		//Signature verification END
+
 		//only change the health once, we can do this by checking the originating player
-		if(data.from === currentPlayer.name){
+		if (json.from === currentPlayer.name) {
 			var indexDamaged = 0;
-			if(!data.isEnemy){
-				clients = clients.map(function(client, index){
-					if(client.name === data.name){
+			if (!json.isEnemy) {
+				clients = clients.map(function(client, index) {
+					if (client.name === json.name) {
 						indexDamaged = index;
-						client.health -= data.healthChange;
+						client.health -= json.healthChange;
 					}
 					return client
 				});
 			}
-			else{
-				enemies = enemies.map(function(enemy, index){
-					if(enemy.name === data.name){
+			else {
+				enemies = enemies.map(function(enemy, index) {
+					if (enemy.name === json.name) {
 						indexDamaged = index;
-						enemy.health -= data.healthChange;
+						enemy.health -= json.healthChange;
 					}
 					return enemy;
 				});
 			}
 
 			var response = {
-				name: (!data.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
-				health: (!data.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
+				name: (!json.isEnemy) ? clients[indexDamaged].name : enemies[indexDamaged].name,
+				health: (!json.isEnemy) ? clients[indexDamaged].health : enemies[indexDamaged].health
 			};
 			//console.log(currentPlayer.name + ' bcst: health: ' + JSON.stringify(response));
 			socket.emit('health', response);
 			socket.broadcast.emit('health', response);
 		}
 	});
-	socket.on('restoreHealth', function(){
+
+	socket.on('restoreHealth', function() {
 		//console.log(' Restoring health ');
 		currentPlayer.health = 100;
 		var response = {
@@ -236,12 +259,12 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('health', response);
 	});
 
-	socket.on('disconnect', function(){
+	socket.on('disconnect', function() {
 		console.log(currentPlayer.name+ ' recv: disconnect ' + currentPlayer.name);
 		socket.broadcast.emit('other player disconnected', currentPlayer);
 		console.log(currentPlayer.name + ' bcst: other player disconnected ' + JSON.stringify(currentPlayer));
-		for(var i=0; i<clients.length; i++){
-			if(clients[i].name === currentPlayer.name){
+		for (var i=0; i<clients.length; i++) {
+			if (clients[i].name === currentPlayer.name) {
 				clients.splice(i,1);
 			}
 		}

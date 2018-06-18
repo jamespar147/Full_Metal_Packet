@@ -5,7 +5,7 @@ Full Metal Packet Demo
 
 ## Introduction
 This repository contains the source code for Full Metal Packet, an encrypted multiplayer video game.
-You can also take a look at the [source code](https://github.com/jwparsons/FullMetalPacket) and [matchmaking server](https://github.com/jwparsons/FullMetalPacket_Server).
+You can also take a look at the [source code](https://github.com/jwparsons/FullMetalPacket) and [game server](https://github.com/jwparsons/FullMetalPacket_Server).
 It should be noted that this repository also contains the server code.
 
 
