@@ -16,19 +16,20 @@ It should be noted that this repository also contains the server code.
 
 ## Instructions
 1. Clone the repository.
-1. Navigate to the **Server** directory.
-1. Run the command **npm install** to install dependencies.
-1. Run the command **node index** to start the unsecure server.
+1. Navigate to the **Server** directory with Command Prompt (A).
+    * Run the command **npm install** to install dependencies.
+    * Run the command **node index** to start the unsecure server.
 1. Navigate to the **FullMetalPacket** directory.
-1. Run the executable **FullMetalPacket.exe**.
-    1. Press **Play**.
-    1. Choose a name and press **Join**.
-    1. Repeat to add more players.
-1. Open **hacking_tool.html** and use it to mess with the players.
-1. Kill the server.
-1. Run the command **node secure** to start the secure server.
-1. Repeat Step 6.
-1. Try using **hacking_tool.html** again!
+    * Run the executable **FullMetalPacket.exe**.
+    * Press **Play**.
+    * Choose a name and press **Join**.
+    * Repeat to add more players.
+1. Navigate to the **Server** directory with a new instance of Command Prompt (B).
+    * Run the command **node hack**.
+    * Enter the name you chose in the previous step.
+1. In Command Prompt (A), kill the unsecure server with ctrl+C.
+    * Run the command **node secure** to start the secure server.
+1. Repeat Step 4 with Command Prompt (B).
 1. Enjoy!
 
 
